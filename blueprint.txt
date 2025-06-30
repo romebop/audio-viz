@@ -1,0 +1,7 @@
+# Project Blueprint
+
+## Checklist
+
+- [x] Initialize a React project using Vite and TypeScript
+- [ ] Goal 2
+- [ ] Goal 3
