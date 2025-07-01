@@ -2,14 +2,36 @@ import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 
 interface VisualizerProps {
-  audioRef: React.RefObject<HTMLAudioElement>;
+  analyser: AnalyserNode | null;
 }
 
-const Visualizer: React.FC<VisualizerProps> = ({ audioRef }) => {
-  const mountRef = useRef<HTMLDivElement>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+const vertexShader = `
+  uniform float u_time;
+  uniform float u_frequency;
+  varying vec3 vNormal;
 
+  void main() {
+      vNormal = normal;
+      float displacement = sin(position.y * 10.0 + u_time * 5.0) * u_frequency * 0.5;
+      vec3 newPosition = position + normal * displacement;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+  }
+`;
+
+const fragmentShader = `
+  varying vec3 vNormal;
+
+  void main() {
+      gl_FragColor = vec4(vNormal * 0.5 + 0.5, 1.0);
+  }
+`;
+
+const Visualizer: React.FC<VisualizerProps> = ({ analyser }) => {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const uniformsRef = useRef<any>(null);
+
+  // Effect for Three.js scene setup and animation loop
   useEffect(() => {
     const currentMount = mountRef.current;
     if (!currentMount) return;
@@ -17,62 +39,63 @@ const Visualizer: React.FC<VisualizerProps> = ({ audioRef }) => {
     // Scene setup
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setClearColor(0x000000, 0); // Transparent background
     renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
     currentMount.appendChild(renderer.domElement);
 
     camera.position.z = 5;
 
-    // Cube for visualization (placeholder)
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
+    // Sphere with ShaderMaterial
+    const geometry = new THREE.SphereGeometry(2, 64, 64);
+    uniformsRef.current = {
+      u_time: { value: 0.0 },
+      u_frequency: { value: 0.0 }
+    };
+    const material = new THREE.ShaderMaterial({
+      uniforms: uniformsRef.current,
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader
+    });
+    const sphere = new THREE.Mesh(geometry, material);
+    scene.add(sphere);
 
-    // Audio context setup
-    const audio = audioRef.current;
-    if (audio && !analyserRef.current) { // Only create if not already created
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const source = audioContext.createMediaElementSource(audio);
-      const analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-
-      source.connect(analyser);
-      analyser.connect(audioContext.destination);
-
-      analyserRef.current = analyser;
-      dataArrayRef.current = dataArray;
+    // Initialize dataArray if analyser is available
+    if (analyser) {
+      dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
     }
 
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
 
-      if (analyserRef.current && dataArrayRef.current) {
-        analyserRef.current.getByteFrequencyData(dataArrayRef.current);
-        // Example visualization: scale cube based on average frequency
+      if (analyser && dataArrayRef.current && uniformsRef.current) {
+        analyser.getByteFrequencyData(dataArrayRef.current);
         const average = dataArrayRef.current.reduce((sum, value) => sum + value, 0) / dataArrayRef.current.length;
-        cube.scale.set(1 + average / 100, 1 + average / 100, 1 + average / 100);
+        uniformsRef.current.u_frequency.value = average / 255.0; // Normalize to 0-1
+        uniformsRef.current.u_time.value += 0.05; // Increment time for animation
       }
 
-      cube.rotation.x += 0.01;
-      cube.rotation.y += 0.01;
+      sphere.rotation.x += 0.005;
+      sphere.rotation.y += 0.005;
 
       renderer.render(scene, camera);
     };
 
     animate();
 
-    // Cleanup
+    // Cleanup for Three.js
     return () => {
+      console.log('Visualizer: Cleaning up Three.js');
       if (currentMount && renderer.domElement) {
         currentMount.removeChild(renderer.domElement);
       }
-      // Disconnect audio nodes if necessary
+      // Dispose Three.js resources if necessary
+      geometry.dispose();
+      material.dispose();
+      renderer.dispose();
     };
-  }, [audioRef]);
+  }, [analyser]); // Dependency on analyser: runs when analyser changes
 
   return <div ref={mountRef} className="visualizer-container" />;
 };

@@ -1,5 +1,6 @@
 import { useState, useEffect, RefObject } from 'react';
 import { FaPlay, FaPause, FaVolumeUp } from 'react-icons/fa';
+import { audioContext } from '../audioContext'; // Import audioContext
 import './AudioPlayer.css';
 
 interface AudioPlayerProps {
@@ -14,33 +15,71 @@ function AudioPlayer({ audioRef }: AudioPlayerProps) {
 
   useEffect(() => {
     const audio = audioRef.current;
+    console.log('AudioPlayer useEffect - audioRef.current:', audio); // Debugging line
+
     if (audio) {
       const setAudioData = () => {
+        console.log('loadeddata event fired'); // Debugging line
         setDuration(audio.duration);
         setCurrentTime(audio.currentTime);
       };
 
-      const setAudioTime = () => setCurrentTime(audio.currentTime);
+      const setAudioTime = () => {
+        setCurrentTime(audio.currentTime);
+      };
 
       audio.addEventListener('loadeddata', setAudioData);
       audio.addEventListener('timeupdate', setAudioTime);
+
+      // Initialize if audio is already loaded (e.g., from cache)
+      if (audio.readyState >= 2) { // HTMLMediaElement.HAVE_CURRENT_DATA or higher
+        setAudioData();
+      }
+
+      // Set initial volume
+      audio.volume = volume;
 
       return () => {
         audio.removeEventListener('loadeddata', setAudioData);
         audio.removeEventListener('timeupdate', setAudioTime);
       };
     }
-  }, [audioRef]);
+  }, [audioRef, volume]);
 
   const togglePlayPause = () => {
     const audio = audioRef.current;
+    console.log('togglePlayPause called. audioRef.current:', audio); // Debugging line
+    console.log('AudioContext state:', audioContext.state); // Debugging audio context state
+
     if (audio) {
       if (isPlaying) {
         audio.pause();
+        console.log('Audio paused'); // Debugging line
       } else {
-        audio.play();
+        // Resume AudioContext if it's suspended
+        if (audioContext.state === 'suspended') {
+          audioContext.resume().then(() => {
+            console.log('AudioContext resumed successfully');
+            audio.play().then(() => {
+              console.log('Audio play successful'); // Debugging line
+            }).catch(error => {
+              console.error('Error playing audio:', error); // Catch potential play errors
+            });
+          }).catch(error => {
+            console.error('Error resuming AudioContext:', error);
+          });
+        } else {
+          audio.play().then(() => {
+            console.log('Audio play successful'); // Debugging line
+          }).catch(error => {
+            console.error('Error playing audio:', error); // Catch potential play errors
+          });
+        }
+        console.log('Attempting to play audio'); // Debugging line
       }
       setIsPlaying(!isPlaying);
+    } else {
+      console.log('Audio element not available for play/pause in togglePlayPause'); // Debugging line
     }
   };
 
