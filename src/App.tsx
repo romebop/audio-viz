@@ -7,7 +7,7 @@ import './App.css';
 // Extend HTMLMediaElement to include our custom source node
 declare global {
   interface HTMLMediaElement {
-    __sourceNode?: MediaElementSourceNode;
+    __sourceNode?: MediaElementAudioSourceNode;
   }
 }
 

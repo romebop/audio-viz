@@ -1,10 +1,10 @@
-import { useState, useEffect, RefObject } from 'react';
+import { useState, useEffect, type RefObject } from 'react';
 import { FaPlay, FaPause, FaVolumeUp } from 'react-icons/fa';
 import { audioContext } from '../audioContext'; // Import audioContext
 import './AudioPlayer.css';
 
 interface AudioPlayerProps {
-  audioRef: RefObject<HTMLAudioElement>;
+  audioRef: RefObject<HTMLAudioElement | null>;
 }
 
 function AudioPlayer({ audioRef }: AudioPlayerProps) {
