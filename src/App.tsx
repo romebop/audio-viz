@@ -13,6 +13,7 @@ declare global {
 
 function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const audioSrc = `${import.meta.env.BASE_URL}outofcontrol.mp3`;
 
   // Callback ref for the audio element to ensure connection happens only once
   const audioCallbackRef = useCallback((audioElement: HTMLAudioElement | null) => {
@@ -34,17 +35,10 @@ function App() {
   return (
     <div className="app-container">
       <Visualizer analyser={analyser} />
-      <audio ref={audioCallbackRef} src="/outofcontrol.mp3" preload="metadata" />
+      <audio ref={audioCallbackRef} src={audioSrc} preload="metadata" />
       <AudioPlayer audioRef={audioRef} />
     </div>
   );
 }
 
 export default App;
-
-
-
-
-
-
-  
