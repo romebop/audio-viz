@@ -1,6 +1,6 @@
 {
   "name": "audioviz",
-  "homepage": "https://romebop.io/audio-viz",
+  "homepage": "https://audio-viz.romebop.io",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "yarn build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "echo audio-viz.romebop.io > ./dist/CNAME && gh-pages -d dist"
   },
   "dependencies": {
     "@types/three": "^0.177.0",
